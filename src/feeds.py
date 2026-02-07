@@ -46,31 +46,15 @@ async def ob_poller(symbol: str, state: State):
 
 async def binance_feed(symbol: str, kline_iv: str, state: State):
     sym = symbol.lower()
-    streams = "/".join([
-        f"{sym}@trade",
-        f"{sym}@kline_{kline_iv}",
-    ])
-    url = f"{config.BINANCE_WS}?streams={streams}"
+    url = f"{config.BINANCE_WS}?streams={sym}@kline_{kline_iv}"
 
     async with websockets.connect(url, ping_interval=20) as ws:
-        print(f"  [Binance WS] connected – {symbol}")
+        print(f"  [Binance WS] connected – {symbol} (klines only)")
         while True:
             data   = json.loads(await ws.recv())
-            stream = data.get("stream", "")
             pay    = data["data"]
 
-            if "@trade" in stream:
-                state.trades.append({
-                    "t":      pay["T"] / 1000.0,
-                    "price":  float(pay["p"]),
-                    "qty":    float(pay["q"]),
-                    "is_buy": not pay["m"],
-                })
-                if len(state.trades) > 5000:
-                    cut = time.time() - config.TRADE_TTL
-                    state.trades = [t for t in state.trades if t["t"] >= cut]
-
-            elif "@kline" in stream:
+            if "@kline" in data.get("stream", ""):
                 k = pay["k"]
                 candle = {
                     "t": k["t"] / 1000.0,
@@ -171,6 +155,35 @@ def fetch_pm_tokens(coin: str, tf: str) -> tuple:
     except Exception as e:
         print(f"  [PM] token fetch failed ({slug}): {e}")
         return None, None
+
+
+async def coinbase_trade_feed(coin: str, state: State):
+    product = config.COIN_COINBASE[coin]
+    sub = json.dumps({
+        "type": "subscribe",
+        "channels": [{"name": "matches", "product_ids": [product]}],
+    })
+    while True:
+        try:
+            async with websockets.connect(config.COINBASE_WS, ping_interval=20) as ws:
+                await ws.send(sub)
+                print(f"  [Coinbase] connected – {product}")
+                while True:
+                    msg = json.loads(await ws.recv())
+                    if msg.get("type") != "match":
+                        continue
+                    state.trades.append({
+                        "t":      time.time(),
+                        "price":  float(msg["price"]),
+                        "qty":    float(msg["size"]),
+                        "is_buy": msg["side"] == "buy",
+                    })
+                    if len(state.trades) > 5000:
+                        cut = time.time() - config.TRADE_TTL
+                        state.trades = [t for t in state.trades if t["t"] >= cut]
+        except Exception as e:
+            print(f"  [Coinbase] reconnecting: {e}")
+            await asyncio.sleep(2)
 
 
 async def pm_feed(state: State):

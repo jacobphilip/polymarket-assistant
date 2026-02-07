@@ -45,8 +45,18 @@ async def display_loop(state: feeds.State, coin: str, tf: str):
 async def main():
     console.print("\n[bold magenta]═══ CRYPTO PREDICTION DASHBOARD ═══[/bold magenta]\n")
 
-    coin = pick("Select coin:", config.COINS)
-    tf   = pick("Select timeframe:", config.TIMEFRAMES)
+    args = sys.argv[1:]
+    if len(args) >= 2:
+        coin, tf = args[0].upper(), args[1]
+        if coin not in config.COINS:
+            console.print(f"[red]Unknown coin: {coin}. Choose from {config.COINS}[/red]")
+            return
+        if tf not in config.TIMEFRAMES:
+            console.print(f"[red]Unknown timeframe: {tf}. Choose from {config.TIMEFRAMES}[/red]")
+            return
+    else:
+        coin = pick("Select coin:", config.COINS)
+        tf   = pick("Select timeframe:", config.TIMEFRAMES)
 
     console.print(f"\n[bold green]Starting {coin} {tf} …[/bold green]\n")
 
@@ -67,6 +77,7 @@ async def main():
     await asyncio.gather(
         feeds.ob_poller(binance_sym, state),
         feeds.binance_feed(binance_sym, kline_iv, state),
+        feeds.coinbase_trade_feed(coin, state),
         feeds.pm_feed(state),
         display_loop(state, coin, tf),
     )

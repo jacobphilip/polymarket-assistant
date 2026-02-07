@@ -18,12 +18,21 @@ TIMEFRAMES = ["15m", "1h", "4h", "daily"]
 TF_KLINE = {"15m": "1m", "1h": "1m", "4h": "15m", "daily": "1h"}
 
 # ── Binance ─────────────────────────────────────────────────────
-BINANCE_WS   = "wss://stream.binance.com/stream"
-BINANCE_REST = "https://api.binance.com/api/v3"
+BINANCE_WS   = "wss://stream.binance.us:9443/stream"
+BINANCE_REST = "https://api.binance.us/api/v3"
 OB_LEVELS    = 20          # depth levels in stream (Binance: 5 / 10 / 20)
 TRADE_TTL    = 600         # keep 10 min of trades
 KLINE_MAX    = 150         # max candles in memory
 KLINE_BOOT   = 100         # candles fetched on startup
+
+# ── Coinbase (trade stream — higher liquidity than Binance.US) ─
+COINBASE_WS = "wss://ws-feed.exchange.coinbase.com"
+COIN_COINBASE = {
+    "BTC": "BTC-USD",
+    "ETH": "ETH-USD",
+    "SOL": "SOL-USD",
+    "XRP": "XRP-USD",
+}
 
 # ── Polymarket ──────────────────────────────────────────────────
 PM_GAMMA = "https://gamma-api.polymarket.com/events"
